@@ -110,10 +110,52 @@ describe("evaluateToolApproval", () => {
         title: "fix: prevent duplicate checkout",
         draft: true,
       }),
-      { ...context, approvedBranch: "replayfix/issue-7-stop-duplicates" },
+      {
+        ...context,
+        approvedBranch: "replayfix/issue-7-stop-duplicates",
+        publishedBranch: "replayfix/issue-7-stop-duplicates",
+      },
     );
 
     expect(evaluation.allowed).toBe(true);
+  });
+
+  it("requires a successful patch publication before draft PR approval", () => {
+    const evaluation = evaluateToolApproval(
+      call("create_pull_request", {
+        owner: issue.owner,
+        repo: issue.repository,
+        base: "main",
+        head: "replayfix/issue-7-stop-duplicates",
+        title: "fix: prevent duplicate checkout",
+        draft: true,
+      }),
+      { ...context, approvedBranch: "replayfix/issue-7-stop-duplicates" },
+    );
+
+    expect(evaluation.allowed).toBe(false);
+    expect(evaluation.reasons.join(" ")).toMatch(/Patch publication.*complete/);
+  });
+
+  it("binds successful publication state to the draft PR branch", () => {
+    const evaluation = evaluateToolApproval(
+      call("create_pull_request", {
+        owner: issue.owner,
+        repo: issue.repository,
+        base: "main",
+        head: "replayfix/issue-7-stop-duplicates",
+        title: "fix: prevent duplicate checkout",
+        draft: true,
+      }),
+      {
+        ...context,
+        approvedBranch: "replayfix/issue-7-stop-duplicates",
+        publishedBranch: "replayfix/issue-7-other-patch",
+      },
+    );
+
+    expect(evaluation.allowed).toBe(false);
+    expect(evaluation.reasons.join(" ")).toMatch(/Patch publication.*branch/);
   });
 
   it("requires successful branch creation before a patch can be approved", () => {

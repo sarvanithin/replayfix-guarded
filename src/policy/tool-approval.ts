@@ -28,6 +28,7 @@ export interface ApprovalPolicyContext {
   issue: GitHubIssueReference;
   evidence: ApprovalEvidence;
   approvedBranch?: string;
+  publishedBranch?: string;
 }
 
 export interface PendingCall {
@@ -189,6 +190,11 @@ export function evaluateToolApproval(
       }
       break;
     case "create_pull_request":
+      if (!context.publishedBranch || branch !== context.publishedBranch) {
+        reasons.push(
+          "Patch publication must complete successfully on the approved branch before draft PR creation",
+        );
+      }
       if (args.base !== context.evidence.baseBranch) {
         reasons.push(
           "Pull request base does not match the evidence base branch",

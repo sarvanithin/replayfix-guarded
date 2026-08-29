@@ -112,7 +112,7 @@ node --env-file=.env.local --import tsx src/cli/run.ts \
   --interactive-approvals --evidence ./demo/artifacts/evidence.json
 ```
 
-Each pending mutation is parsed and checked in code. Immediately before branch approval, the CLI resolves GitHub's live base ref and requires it to equal the tested evidence SHA. File contents are represented by hashes rather than printed. The operator must type the displayed SHA-256 approval digest exactly; that digest binds the actual tool arguments to the repository, base SHA, ordered passing tests, branch, and PR title. A successful branch tool response and a live topic ref still at that tested SHA are required before either later write can be approved. A mismatch sends a denial, changed arguments require a new decision, and failed or incomplete turns exit non-zero. See [approval evidence](docs/APPROVAL_EVIDENCE.md).
+Each pending mutation is parsed and checked in code. Immediately before branch approval, the CLI resolves GitHub's live base ref and requires it to equal the tested evidence SHA. File contents are represented by hashes rather than printed. The operator must type the displayed SHA-256 approval digest exactly; that digest binds the actual tool arguments to the repository, base SHA, ordered passing tests, branch, and PR title. A successful branch tool response and a live topic ref still at that tested SHA are required before patch publication; the exact `push_files` call must then return successfully on that branch before the draft-PR gate opens. A mismatch sends a denial, changed arguments require a new decision, and failed or incomplete turns exit non-zero. See [approval evidence](docs/APPROVAL_EVIDENCE.md).
 
 ## Local development
 

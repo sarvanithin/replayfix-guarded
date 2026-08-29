@@ -107,16 +107,20 @@ async function run(rawIssueUrl: string): Promise<void> {
         output: process.stdout,
       });
       let approvedBranch: string | undefined;
+      let publishedBranch: string | undefined;
       try {
         while (state.pendingApprovals.length > 0) {
           const decisions: TrueForgeApi.UserToolApprovalEvent[] = [];
           const branchCandidates: { callId: string; branch: string }[] = [];
+          const publicationCandidates: { callId: string; branch: string }[] =
+            [];
           for (const pending of state.pendingApprovals) {
             for (const call of pending.toolCalls) {
               const policyContext = {
                 issue: reference,
                 evidence,
                 ...(approvedBranch ? { approvedBranch } : {}),
+                ...(publishedBranch ? { publishedBranch } : {}),
               };
               let evaluation: ToolApprovalEvaluation = evaluateToolApproval(
                 call,
@@ -179,6 +183,16 @@ async function run(rawIssueUrl: string): Promise<void> {
                   branch: evaluation.branch,
                 });
               }
+              if (
+                decision.approval.status === "allow" &&
+                evaluation.operation === "push_files" &&
+                evaluation.branch
+              ) {
+                publicationCandidates.push({
+                  callId: evaluation.call.id,
+                  branch: evaluation.branch,
+                });
+              }
             }
           }
 
@@ -200,6 +214,11 @@ async function run(rawIssueUrl: string): Promise<void> {
                 token: githubToken,
               });
               approvedBranch = candidate.branch;
+            }
+          }
+          for (const candidate of publicationCandidates) {
+            if (hasSuccessfulToolResponse(state, candidate.callId)) {
+              publishedBranch = candidate.branch;
             }
           }
         }
