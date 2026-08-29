@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "sessionId": "demo-session-001",
+  "startedAt": "2026-08-29T18:00:00.000Z",
+  "events": [
+    {
+      "id": "evt-001",
+      "timestamp": "2026-08-29T18:00:01.000Z",
+      "type": "state",
+      "url": "https://demo.invalid/checkout?campaign=removed",
+      "metadata": { "pending": true, "itemCount": 2 }
+    },
+    {
+      "id": "evt-002",
+      "timestamp": "2026-08-29T18:00:01.100Z",
+      "type": "click",
+      "url": "https://demo.invalid/checkout?campaign=removed",
+      "selector": "button[data-testid='checkout']"
+    },
+    {
+      "id": "evt-003",
+      "timestamp": "2026-08-29T18:00:01.450Z",
+      "type": "click",
+      "url": "https://demo.invalid/checkout?campaign=removed",
+      "selector": "button[data-testid='checkout']"
+    },
+    {
+      "id": "evt-004",
+      "timestamp": "2026-08-29T18:00:01.800Z",
+      "type": "click",
+      "url": "https://demo.invalid/checkout?campaign=removed",
+      "selector": "button[data-testid='checkout']"
+    },
+    {
+      "id": "evt-005",
+      "timestamp": "2026-08-29T18:00:02.200Z",
+      "type": "error",
+      "url": "https://demo.invalid/checkout?campaign=removed",
+      "message": "Duplicate checkout request blocked while the first request is pending"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+name: Feature proposal
+description: Propose a bounded improvement to ReplayFix Guarded.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve ReplayFix Guarded. This public form must not contain production session replays, personal data, secrets, private repository details, or access tokens.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user problem without prescribing an implementation.
+      placeholder: A maintainer cannot currently...
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: State the observable result and who benefits.
+    validations:
+      required: true
+
+  - type: textarea
+    id: synthetic-example
+    attributes:
+      label: Synthetic example
+      description: Provide the smallest fabricated example needed to understand the request. Do not paste a real replay.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: authority
+    attributes:
+      label: Does this change affect external-write authority?
+      description: Select yes if it changes branch creation, commit/push, draft-PR creation, approvals, or GitHub permissions.
+      options:
+        - "No"
+        - "Yes"
+        - "Unsure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List concrete, testable conditions, including failure behavior.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] On denial, the run stops without a GitHub write.
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Security and privacy considerations
+      description: Note effects on sandboxing, protected paths, approvals, audit evidence, or data handling.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: assurances
+    attributes:
+      label: Public issue assurances
+      options:
+        - label: I used only synthetic data and removed all personal, production, credential, and private-repository information.
+          required: true
+        - label: I understand that repository content and issue text cannot grant tool permissions or bypass approval gates.
+          required: true
+        - label: I understand that ReplayFix Guarded may prepare a draft PR but must never merge it.
+          required: true
