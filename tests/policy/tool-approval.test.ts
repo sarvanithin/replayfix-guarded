@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseGitHubIssueUrl } from "../../src/domain/github.js";
 import {
   createGuardedApprovalInput,
   evaluateToolApproval,
   validateApprovalEvidence,
+  verifyBaseReference,
+  verifyCreatedBranchReference,
   type ApprovalEvidence,
   type ApprovalPolicyContext,
   type PendingCall,
@@ -114,6 +116,22 @@ describe("evaluateToolApproval", () => {
     expect(evaluation.allowed).toBe(true);
   });
 
+  it("requires successful branch creation before a patch can be approved", () => {
+    const evaluation = evaluateToolApproval(
+      call("push_files", {
+        owner: issue.owner,
+        repo: issue.repository,
+        branch: "replayfix/issue-7-stop-duplicates",
+        message: "fix: prevent duplicate checkout",
+        files: [{ path: "src/checkout.ts", content: "safe" }],
+      }),
+      context,
+    );
+
+    expect(evaluation.allowed).toBe(false);
+    expect(evaluation.reasons.join(" ")).toMatch(/Branch creation.*complete/);
+  });
+
   it.each([
     [
       call("create_branch", {
@@ -131,7 +149,10 @@ describe("evaluateToolApproval", () => {
         repo: issue.repository,
         branch: "replayfix/issue-7-stop-duplicates",
         message: "publish",
-        files: [{ path: ".github/workflows/unsafe.yml", content: "unsafe" }],
+        files: [
+          { path: ".github/workflows/unsafe.yml", content: "unsafe" },
+          { path: "package-lock.json", content: "{}" },
+        ],
       }),
       context,
       /protected/,
@@ -170,6 +191,92 @@ describe("evaluateToolApproval", () => {
   ])("fails closed for an unresolved call", (pending, expected) => {
     expect(evaluateToolApproval(pending, context).reasons.join(" ")).toMatch(
       expected,
+    );
+  });
+});
+
+describe("verifyBaseReference", () => {
+  it("accepts evidence only while the live base ref has the same SHA", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ object: { sha: evidence.baseSha } }), {
+          status: 200,
+        }),
+      ),
+    );
+
+    await expect(
+      verifyBaseReference({
+        context,
+        token: "test-token",
+        fetch: request,
+      }),
+    ).resolves.toBeUndefined();
+    const requestedUrl = request.mock.calls[0]?.[0];
+    expect(requestedUrl).toBeInstanceOf(URL);
+    if (!(requestedUrl instanceof URL)) throw new Error("Expected URL request");
+    expect(requestedUrl.href).toContain(
+      "/repos/sarvanithin/replayfix-guarded/git/ref/heads/main",
+    );
+    expect(request.mock.calls[0]?.[1]).toMatchObject({
+      headers: { Authorization: "Bearer test-token" },
+    });
+  });
+
+  it("fails closed when the base ref moved", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ object: { sha: "b".repeat(40) } }), {
+          status: 200,
+        }),
+      ),
+    );
+
+    await expect(
+      verifyBaseReference({
+        context,
+        token: "test-token",
+        fetch: request,
+      }),
+    ).rejects.toThrow(/does not match/);
+  });
+
+  it("fails closed when GitHub cannot resolve the base ref", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 404 })),
+    );
+
+    await expect(
+      verifyBaseReference({
+        context,
+        token: "test-token",
+        fetch: request,
+      }),
+    ).rejects.toThrow(/Unable to resolve.*404/);
+  });
+
+  it("verifies that a created topic branch starts at the tested base SHA", async () => {
+    const request = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ object: { sha: evidence.baseSha } }), {
+          status: 200,
+        }),
+      ),
+    );
+
+    await expect(
+      verifyCreatedBranchReference({
+        context,
+        branch: "replayfix/issue-7-stop-duplicates",
+        token: "test-token",
+        fetch: request,
+      }),
+    ).resolves.toBeUndefined();
+    const requestedUrl = request.mock.calls[0]?.[0];
+    expect(requestedUrl).toBeInstanceOf(URL);
+    if (!(requestedUrl instanceof URL)) throw new Error("Expected URL request");
+    expect(requestedUrl.href).toContain(
+      "git/ref/heads/replayfix%2Fissue-7-stop-duplicates",
     );
   });
 });

@@ -47,6 +47,16 @@ export interface ToolApprovalEvaluation {
   summary: string;
 }
 
+export interface BaseReferenceVerificationOptions {
+  context: ApprovalPolicyContext;
+  token: string;
+  fetch?: typeof fetch;
+}
+
+export interface CreatedBranchVerificationOptions extends BaseReferenceVerificationOptions {
+  branch: string;
+}
+
 const SHA256 = /^[a-f0-9]{64}$/i;
 const GIT_SHA = /^[a-f0-9]{40}$/i;
 const MAX_FILES = 20;
@@ -158,6 +168,11 @@ export function evaluateToolApproval(
   if (context.approvedBranch && branch !== context.approvedBranch) {
     reasons.push("Mutation branch differs from the approved branch");
   }
+  if (call.toolName !== "create_branch" && !context.approvedBranch) {
+    reasons.push(
+      "Branch creation must complete successfully before later mutation gates",
+    );
+  }
 
   switch (call.toolName) {
     case "create_branch":
@@ -214,6 +229,76 @@ export function evaluateToolApproval(
     subject,
     summary,
   };
+}
+
+/**
+ * Resolves the evidence base ref immediately before branch approval. A branch
+ * name alone is mutable, so its current GitHub SHA must still equal the SHA
+ * whose sandbox checkout and tests produced the approval evidence.
+ */
+export async function verifyBaseReference(
+  options: BaseReferenceVerificationOptions,
+): Promise<void> {
+  const { evidence, issue } = options.context;
+  await verifyReferenceSha({
+    issue,
+    branch: evidence.baseBranch,
+    expectedSha: evidence.baseSha,
+    token: options.token,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+    description: "evidence base",
+  });
+}
+
+/** Confirms that a newly created topic branch actually starts at baseSha. */
+export async function verifyCreatedBranchReference(
+  options: CreatedBranchVerificationOptions,
+): Promise<void> {
+  await verifyReferenceSha({
+    issue: options.context.issue,
+    branch: options.branch,
+    expectedSha: options.context.evidence.baseSha,
+    token: options.token,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+    description: "created branch",
+  });
+}
+
+async function verifyReferenceSha(options: {
+  issue: GitHubIssueReference;
+  branch: string;
+  expectedSha: string;
+  token: string;
+  fetch?: typeof fetch;
+  description: string;
+}): Promise<void> {
+  const request = options.fetch ?? fetch;
+  const url = new URL(
+    `/repos/${encodeURIComponent(options.issue.owner)}/${encodeURIComponent(options.issue.repository)}/git/ref/heads/${encodeURIComponent(options.branch)}`,
+    "https://api.github.com",
+  );
+  const response = await request(url, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${options.token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Unable to resolve the ${options.description} ref (${String(response.status)})`,
+    );
+  }
+  const payload: unknown = await response.json();
+  const liveSha =
+    isRecord(payload) && isRecord(payload.object)
+      ? optionalString(payload.object.sha)
+      : undefined;
+  if (liveSha?.toLowerCase() !== options.expectedSha.toLowerCase()) {
+    throw new Error(
+      `${options.description} SHA does not match the tested evidence SHA`,
+    );
+  }
 }
 
 export function createGuardedApprovalInput(

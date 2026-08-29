@@ -99,7 +99,7 @@ Run read-only/default mode against an allowlisted public issue:
 
 ```bash
 node --env-file=.env.local --import tsx src/cli/run.ts \
-  https://github.com/sarvanithin/replayfix-guarded/issues/2
+  https://github.com/sarvanithin/replayfix-guarded/issues/<issue-number>
 ```
 
 Open the local TrueForge UI to inspect subagent threads, sandbox commands, the diff, tests, and each pending tool call. Default CLI mode reports a pause but cannot approve anything.
@@ -108,11 +108,11 @@ For the guarded write path, export the sandbox evidence as a small JSON file and
 
 ```bash
 node --env-file=.env.local --import tsx src/cli/run.ts \
-  https://github.com/sarvanithin/replayfix-guarded/issues/2 \
+  https://github.com/sarvanithin/replayfix-guarded/issues/<issue-number> \
   --interactive-approvals --evidence ./demo/artifacts/evidence.json
 ```
 
-Each pending mutation is parsed and checked in code. File contents are represented by hashes rather than printed. The operator must type the displayed SHA-256 approval digest exactly; that digest binds the actual tool arguments to the repository, base SHA, ordered passing tests, branch, and PR title. A mismatch sends a denial, and changed arguments require a new decision. See [approval evidence](docs/APPROVAL_EVIDENCE.md).
+Each pending mutation is parsed and checked in code. Immediately before branch approval, the CLI resolves GitHub's live base ref and requires it to equal the tested evidence SHA. File contents are represented by hashes rather than printed. The operator must type the displayed SHA-256 approval digest exactly; that digest binds the actual tool arguments to the repository, base SHA, ordered passing tests, branch, and PR title. A successful branch tool response and a live topic ref still at that tested SHA are required before either later write can be approved. A mismatch sends a denial, changed arguments require a new decision, and failed or incomplete turns exit non-zero. See [approval evidence](docs/APPROVAL_EVIDENCE.md).
 
 ## Local development
 
@@ -135,7 +135,7 @@ The recording should show one continuous run: public issue intake, sandbox repro
 
 Representative implementation: [PR #2 — build approval-gated ReplayFix workflow on TrueForge](https://github.com/sarvanithin/replayfix-guarded/pull/2).
 
-Qodo surfaced a navigation-field redaction gap, an executable-policy integration gap around mutation targets and payloads, stale terminal approvals, and unbounded replay-file ingestion. The fixes route navigation destinations through URL redaction, enforce repository/branch/path/draft/test/digest policy in the approval-resume path, make terminal actions authoritative, and reject oversized files before parsing. The PR preserves the initial review, engineering changes, CI rerun, and follow-up Qodo review.
+Qodo surfaced a navigation-field redaction gap, an executable-policy integration gap around mutation targets and payloads, stale terminal approvals, and unbounded replay-file ingestion. Its follow-up then challenged branch-gate ordering, live base-SHA freshness, protected-file coverage, and failed-turn exit behavior. The fixes route navigation destinations through URL redaction; enforce repository, successful branch creation, live base SHA, protected paths, draft status, tests, and exact digest policy in the approval-resume path; make terminal actions authoritative; reject oversized files before parsing; and fail the CLI on errored or incomplete turns. The PR preserves each review, the corresponding engineering changes, and CI reruns.
 
 ## Project provenance and AI assistance
 

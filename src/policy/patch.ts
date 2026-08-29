@@ -40,6 +40,12 @@ export class PatchPolicyError extends Error {
 const SECRET_FILE =
   /^(\.env(?:\..+)?|\.npmrc|\.netrc|secrets?(?:\..+)?|credentials?(?:\..+)?|id_(?:rsa|dsa|ecdsa|ed25519)(?:\.pub)?|.*\.(?:pem|p12|pfx|key))$/i;
 const SECRET_SEGMENT = /^\.?(?:secrets?|credentials?)$/i;
+const PROTECTED_FILE =
+  /^(?:CODEOWNERS|SECURITY\.md|Dockerfile(?:\..+)?|Procfile|package(?:-lock)?\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.(?:toml|lock)|pyproject\.toml|poetry\.lock|Pipfile(?:\.lock)?|Gemfile(?:\.lock)?|go\.(?:mod|sum)|composer\.(?:json|lock)|requirements(?:-[^.]+)?\.txt|vercel\.json|netlify\.toml|fly\.toml|serverless\.ya?ml)$/i;
+const PROTECTED_SEGMENT =
+  /^(?:auth|authentication|authorization|security|polic(?:y|ies)|permissions?|access-control|deploy(?:ment)?s?|infra(?:structure)?|terraform|kubernetes|k8s|helm|vendor|generated|dist|build|node_modules)$/i;
+const PROTECTED_EXTENSION =
+  /\.(?:tf|tfvars|exe|dll|dylib|so|bin|class|jar|wasm|png|jpe?g|gif|pdf|zip|tar|gz)$/i;
 
 export function inspectPatchPath(
   inputPath: string,
@@ -85,9 +91,22 @@ export function inspectPatchPath(
       message: ".git and .github are protected",
     };
   }
+  const fileName = segments.at(-1) ?? "";
+  if (
+    PROTECTED_FILE.test(fileName) ||
+    PROTECTED_EXTENSION.test(fileName) ||
+    segments.some((segment) => PROTECTED_SEGMENT.test(segment))
+  ) {
+    return {
+      path: inputPath,
+      reason: "protected-path",
+      message:
+        "dependency, ownership, deployment, security, generated, vendor, and binary paths are protected",
+    };
+  }
   if (
     segments.some((segment) => SECRET_SEGMENT.test(segment)) ||
-    SECRET_FILE.test(segments.at(-1) ?? "")
+    SECRET_FILE.test(fileName)
   ) {
     return {
       path: inputPath,

@@ -2,8 +2,10 @@ import type { TrueForgeApi } from "@truefoundry/trueforge-sdk";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  assertTurnCompletedOrPaused,
   collectTrueForgeEvents,
   createEventState,
+  hasSuccessfulToolResponse,
   reduceTrueForgeEvent,
 } from "../../src/trueforge/events.js";
 
@@ -240,5 +242,69 @@ describe("TrueForge event state", () => {
 
     expect(state.pendingApprovals).toHaveLength(1);
     expect(onState).toHaveBeenCalledOnce();
+  });
+
+  it("requires a terminal or approval-required state after a stream ends", () => {
+    expect(() => {
+      assertTurnCompletedOrPaused(createEventState());
+    }).toThrow(/before a terminal/);
+
+    const failed = reduceTrueForgeEvent(createEventState(), {
+      id: "turn_done",
+      threadId: null,
+      createdAt,
+      type: "turn.done",
+      state: {
+        status: "error",
+        completedAt: createdAt,
+        message: "failed",
+      },
+    });
+    expect(() => {
+      assertTurnCompletedOrPaused(failed);
+    }).toThrow(/turn failed/);
+
+    const paused = reduceTrueForgeEvent(createEventState(), {
+      id: "approval_1",
+      threadId: "main",
+      createdAt,
+      type: "tool.approval_required",
+      toolCalls: [{ id: "call_1", sourceEventId: "message_1" }],
+    });
+    expect(() => {
+      assertTurnCompletedOrPaused(paused);
+    }).not.toThrow();
+  });
+
+  it("establishes a branch only from a successful matching tool response", () => {
+    const success = reduceTrueForgeEvent(createEventState(), {
+      id: "response_1",
+      threadId: "main",
+      createdAt,
+      type: "tool.response",
+      toolCallId: "call_1",
+      content: JSON.stringify({ content: [{ type: "text", text: "created" }] }),
+    });
+    const failed = reduceTrueForgeEvent(createEventState(), {
+      id: "response_2",
+      threadId: "main",
+      createdAt,
+      type: "tool.response",
+      toolCallId: "call_2",
+      content: JSON.stringify({ isError: true, content: [] }),
+    });
+    const plain = reduceTrueForgeEvent(createEventState(), {
+      id: "response_3",
+      threadId: "main",
+      createdAt,
+      type: "tool.response",
+      toolCallId: "call_3",
+      content: "branch created",
+    });
+
+    expect(hasSuccessfulToolResponse(success, "call_1")).toBe(true);
+    expect(hasSuccessfulToolResponse(failed, "call_2")).toBe(false);
+    expect(hasSuccessfulToolResponse(plain, "call_3")).toBe(true);
+    expect(hasSuccessfulToolResponse(success, "missing")).toBe(false);
   });
 });

@@ -12,11 +12,16 @@ import {
   createGuardedApprovalInput,
   evaluateToolApproval,
   validateApprovalEvidence,
+  verifyBaseReference,
+  verifyCreatedBranchReference,
   type ApprovalEvidence,
+  type ToolApprovalEvaluation,
 } from "../policy/tool-approval.js";
 import { createTrueForgeClient } from "../trueforge/client.js";
 import {
+  assertTurnCompletedOrPaused,
   createEventState,
+  hasSuccessfulToolResponse,
   reduceTrueForgeEvent,
   type TrueForgeEventState,
 } from "../trueforge/events.js";
@@ -51,6 +56,9 @@ async function run(rawIssueUrl: string): Promise<void> {
     const evidence = interactiveApprovals
       ? await loadApprovalEvidence(evidencePath, reference)
       : undefined;
+    const githubToken = interactiveApprovals
+      ? requireEnvironment("GITHUB_TOKEN")
+      : undefined;
 
     const client = createTrueForgeClient({
       baseUrl: process.env.TRUEFORGE_BASE_URL ?? "http://localhost:8790",
@@ -78,6 +86,7 @@ async function run(rawIssueUrl: string): Promise<void> {
     });
 
     let state = await collectTurn(stream);
+    assertTurnCompletedOrPaused(state);
 
     if (!interactiveApprovals && state.pendingApprovals.length > 0) {
       console.log("\nHuman approval required:");
@@ -101,13 +110,44 @@ async function run(rawIssueUrl: string): Promise<void> {
       try {
         while (state.pendingApprovals.length > 0) {
           const decisions: TrueForgeApi.UserToolApprovalEvent[] = [];
+          const branchCandidates: { callId: string; branch: string }[] = [];
           for (const pending of state.pendingApprovals) {
             for (const call of pending.toolCalls) {
-              const evaluation = evaluateToolApproval(call, {
+              const policyContext = {
                 issue: reference,
                 evidence,
                 ...(approvedBranch ? { approvedBranch } : {}),
-              });
+              };
+              let evaluation: ToolApprovalEvaluation = evaluateToolApproval(
+                call,
+                policyContext,
+              );
+              if (
+                evaluation.allowed &&
+                evaluation.operation === "create_branch" &&
+                githubToken
+              ) {
+                try {
+                  await verifyBaseReference({
+                    context: policyContext,
+                    token: githubToken,
+                  });
+                } catch (error) {
+                  const reason =
+                    error instanceof Error
+                      ? error.message
+                      : "Live base reference verification failed";
+                  evaluation = {
+                    allowed: false,
+                    call: evaluation.call,
+                    operation: evaluation.operation,
+                    ...(evaluation.branch ? { branch: evaluation.branch } : {}),
+                    reasons: [reason],
+                    summary: evaluation.summary,
+                  };
+                }
+              }
+
               console.log(`\n${evaluation.summary}`);
               if (!evaluation.allowed || !evaluation.digest) {
                 console.error(
@@ -131,9 +171,13 @@ async function run(rawIssueUrl: string): Promise<void> {
               decisions.push(decision);
               if (
                 decision.approval.status === "allow" &&
-                evaluation.operation === "create_branch"
+                evaluation.operation === "create_branch" &&
+                evaluation.branch
               ) {
-                approvedBranch = evaluation.branch;
+                branchCandidates.push({
+                  callId: evaluation.call.id,
+                  branch: evaluation.branch,
+                });
               }
             }
           }
@@ -142,6 +186,22 @@ async function run(rawIssueUrl: string): Promise<void> {
             input: decisions,
           });
           state = await collectTurn(stream);
+          assertTurnCompletedOrPaused(state);
+          for (const candidate of branchCandidates) {
+            if (hasSuccessfulToolResponse(state, candidate.callId)) {
+              if (!githubToken) {
+                throw new Error(
+                  "GITHUB_TOKEN is required to verify the created branch",
+                );
+              }
+              await verifyCreatedBranchReference({
+                context: { issue: reference, evidence },
+                branch: candidate.branch,
+                token: githubToken,
+              });
+              approvedBranch = candidate.branch;
+            }
+          }
         }
       } finally {
         prompt.close();
@@ -154,6 +214,14 @@ async function run(rawIssueUrl: string): Promise<void> {
     console.error(`Demo run failed: ${message}`);
     process.exitCode = 1;
   }
+}
+
+function requireEnvironment(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new TypeError(`${name} is required for interactive approvals`);
+  }
+  return value;
 }
 
 async function collectTurn(

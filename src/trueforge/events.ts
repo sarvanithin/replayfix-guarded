@@ -127,6 +127,39 @@ export async function collectTrueForgeEvents(
   return state;
 }
 
+export function assertTurnCompletedOrPaused(state: TrueForgeEventState): void {
+  if (state.status === "error") {
+    throw new Error("TrueForge turn failed");
+  }
+  if (state.status === "streaming") {
+    throw new Error(
+      "TrueForge stream ended before a terminal or approval-required state",
+    );
+  }
+}
+
+/**
+ * A branch is established only after TrueForge records a non-error response
+ * for the exact create_branch call. Approval alone is not execution evidence.
+ */
+export function hasSuccessfulToolResponse(
+  state: TrueForgeEventState,
+  toolCallId: string,
+): boolean {
+  const response = state.events.find(
+    (event): event is TrueForgeApi.ToolResponseEvent =>
+      event.type === "tool.response" && event.toolCallId === toolCallId,
+  );
+  if (!response || response.content.trim().length === 0) return false;
+  try {
+    const content: unknown = JSON.parse(response.content);
+    if (!isRecord(content)) return true;
+    return content.isError !== true && content.is_error !== true;
+  } catch {
+    return true;
+  }
+}
+
 function toPendingApproval(
   event: TrueForgeApi.ToolApprovalRequiredEvent,
   messages: TrueForgeApi.ModelMessageEvent[],
@@ -154,4 +187,8 @@ function toPendingApproval(
       };
     }),
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -29,6 +29,16 @@ describe("patch path policy", () => {
     [".npmrc", "secret-path"],
     [".env.production", "secret-path"],
     ["certs/signing-key.pem", "secret-path"],
+    ["package.json", "protected-path"],
+    ["package-lock.json", "protected-path"],
+    ["CODEOWNERS", "protected-path"],
+    ["deploy/production.yml", "protected-path"],
+    ["infra/main.tf", "protected-path"],
+    ["src/auth/session.ts", "protected-path"],
+    ["SECURITY.md", "protected-path"],
+    ["vendor/lib.js", "protected-path"],
+    ["dist/app.js", "protected-path"],
+    ["assets/logo.png", "protected-path"],
   ])("blocks %s as %s", (filePath, reason) => {
     expect(inspectPatchPath(filePath)?.reason).toBe(reason);
   });

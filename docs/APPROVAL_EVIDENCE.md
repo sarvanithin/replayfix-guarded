@@ -29,9 +29,10 @@ For each pending call, the CLI validates:
 
 - owner and repository match the accepted issue;
 - branch is `replayfix/issue-<number>-<slug>` and remains identical across writes;
-- branch creation starts from the evidence base branch;
-- pushed text files pass protected-path, duplication, count, and byte limits;
+- immediately before branch approval, GitHub's live base ref still resolves to the exact evidence `baseSha`;
+- branch creation starts from the evidence base branch, must return a successful tool response, and its live topic ref must still equal `baseSha` before any later write can be approved;
+- pushed text files pass protected-path, duplication, count, and byte limits; protected classes include dependency manifests and locks, ownership and security policy, authentication/authorization, deployment and infrastructure, generated and vendored output, and binary assets;
 - PR base matches the evidence base, head matches the approved branch, and `draft` is exactly `true`; and
 - at least one ordered, passing test result is bound to the approval.
 
-The displayed digest covers the actual normalized tool arguments plus the repository, base SHA, tests, branch, and title. The operator must type that complete digest to create a TrueForge `user.tool_approval` allow input. Any policy failure or digest mismatch creates a deny input instead.
+The displayed digest covers the actual normalized tool arguments plus the repository, base SHA, tests, branch, and title. The operator must type that complete digest to create a TrueForge `user.tool_approval` allow input. Any policy failure, stale base ref, missing successful branch response, or digest mismatch creates a deny input instead. A failed or incomplete TrueForge turn also terminates the CLI with a non-zero exit code.
