@@ -30,10 +30,11 @@ Treat safety gates as part of the product. Do not bypass, combine, or pre-approv
 7. Run the focused regression test, the relevant test suite, lint, and type-check commands that the repository provides.
 8. Stop on any failed required check. Do not perform any GitHub write until all required tests pass.
 9. Prepare an evidence bundle containing the reproduction, diagnosis, exact diff, commands, results, base SHA, and file hashes.
+10. Export the redacted approval evidence using the schema in `docs/APPROVAL_EVIDENCE.md`; every test output digest must come from the current sandbox run.
 
 ## Gate every GitHub write
 
-Request a new, explicit human approval at each stage. Show the exact action, destination repository, affected ref, evidence bundle, and consequences. Treat approval as single-use and bind it to the displayed payload. Invalidate it whenever the diff, base SHA, command results, destination, or payload changes.
+Request a new, explicit human approval at each stage through the guarded interactive CLI. Show the redacted action, destination repository, affected ref, evidence bundle, digest, and consequences. Require the operator to type the complete digest. Invalidate it whenever the files, base SHA, command results, destination, or payload changes.
 
 1. **Gate 1 — create branch:** create only a `replayfix/<run-id>` branch from the recorded base SHA.
 2. **Gate 2 — commit and push:** commit and push only the reviewed patch to that branch. Do not force-push.

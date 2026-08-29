@@ -54,7 +54,7 @@ search_code        list_branches       create_branch       [approval]
 push_files         [approval]          create_pull_request [approval]
 ```
 
-There is no merge, auto-merge, delete, settings, release, or workflow-mutation tool. The system prompt requires a topic branch and `draft: true`; the product ends at a proposal for a maintainer to review. Protected-path and payload-bound policy utilities add defense in depth around the harness gates.
+There is no merge, auto-merge, delete, settings, release, or workflow-mutation tool. The system prompt requires a topic branch and `draft: true`; the product ends at a proposal for a maintainer to review. In interactive mode, the executable approval boundary independently checks the issue repository, base evidence, branch, protected paths, exact pushed files, passing test digests, and draft status before it can send TrueForge an allow decision.
 
 ## Quick start
 
@@ -95,14 +95,24 @@ If the connectors already exist, omit `--configure-connectors` so no credentials
 node --env-file=.env.local --import tsx src/cli/provision.ts
 ```
 
-Run against an allowlisted public issue:
+Run read-only/default mode against an allowlisted public issue:
 
 ```bash
 node --env-file=.env.local --import tsx src/cli/run.ts \
   https://github.com/sarvanithin/replayfix-guarded/issues/2
 ```
 
-Open the local TrueForge UI to inspect subagent threads, sandbox commands, the diff, tests, and each pending tool call. The CLI reports approvals but intentionally cannot approve them; accept or deny the exact payload in TrueForge.
+Open the local TrueForge UI to inspect subagent threads, sandbox commands, the diff, tests, and each pending tool call. Default CLI mode reports a pause but cannot approve anything.
+
+For the guarded write path, export the sandbox evidence as a small JSON file and opt into interactive approvals:
+
+```bash
+node --env-file=.env.local --import tsx src/cli/run.ts \
+  https://github.com/sarvanithin/replayfix-guarded/issues/2 \
+  --interactive-approvals --evidence ./demo/artifacts/evidence.json
+```
+
+Each pending mutation is parsed and checked in code. File contents are represented by hashes rather than printed. The operator must type the displayed SHA-256 approval digest exactly; that digest binds the actual tool arguments to the repository, base SHA, ordered passing tests, branch, and PR title. A mismatch sends a denial, and changed arguments require a new decision. See [approval evidence](docs/APPROVAL_EVIDENCE.md).
 
 ## Local development
 
@@ -123,7 +133,9 @@ The recording should show one continuous run: public issue intake, sandbox repro
 
 ## Qodo Code Review Evidence
 
-This section will link the representative merged implementation PR after its Qodo review, engineering responses, follow-up review, and human merge are publicly complete. No direct push to `main` will be presented as reviewed work.
+Representative implementation: [PR #2 — build approval-gated ReplayFix workflow on TrueForge](https://github.com/sarvanithin/replayfix-guarded/pull/2).
+
+Qodo surfaced a navigation-field redaction gap, an executable-policy integration gap around mutation targets and payloads, stale terminal approvals, and unbounded replay-file ingestion. The fixes route navigation destinations through URL redaction, enforce repository/branch/path/draft/test/digest policy in the approval-resume path, make terminal actions authoritative, and reject oversized files before parsing. The PR preserves the initial review, engineering changes, CI rerun, and follow-up Qodo review.
 
 ## Project provenance and AI assistance
 
@@ -135,6 +147,7 @@ AI tools assisted with requirements research, architecture, implementation, test
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Security model](docs/SECURITY.md)
+- [Approval evidence contract](docs/APPROVAL_EVIDENCE.md)
 - [Provenance and AI disclosure](docs/PROVENANCE.md)
 - [Demo script](docs/DEMO.md)
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md)

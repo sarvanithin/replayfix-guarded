@@ -100,10 +100,9 @@ export function reduceTrueForgeEvent(
     return {
       ...state,
       events,
-      pendingApprovals: mergePendingApprovals(
-        state.pendingApprovals,
-        requiredApprovals,
-      ),
+      // A terminal event is authoritative. Previously pending calls have been
+      // resolved or invalidated and must not leak into a completed turn.
+      pendingApprovals: requiredApprovals,
       status:
         event.state.status === "error"
           ? "error"
@@ -114,17 +113,6 @@ export function reduceTrueForgeEvent(
   }
 
   return { ...state, events };
-}
-
-function mergePendingApprovals(
-  current: PendingToolApproval[],
-  incoming: PendingToolApproval[],
-): PendingToolApproval[] {
-  const incomingIds = new Set(incoming.map((approval) => approval.eventId));
-  return [
-    ...current.filter((approval) => !incomingIds.has(approval.eventId)),
-    ...incoming,
-  ];
 }
 
 export async function collectTrueForgeEvents(

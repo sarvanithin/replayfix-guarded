@@ -57,4 +57,16 @@ describe("replay sanitization", () => {
     expect(safe.stack).not.toContain("top-secret");
     expect(event.sessionId).toBe("private-123");
   });
+
+  it("redacts canonical navigation destinations as URLs", () => {
+    const safe = sanitizeReplayEvent({
+      id: "navigation-1",
+      sessionId: "private-session",
+      timestamp: 1,
+      type: "navigation",
+      to: "/reset?token=secret#step-two",
+    });
+
+    expect(safe.to).toBe("/reset?[REDACTED_QUERY]");
+  });
 });

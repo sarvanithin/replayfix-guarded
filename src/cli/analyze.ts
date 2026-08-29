@@ -1,13 +1,16 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { detectIssues } from "../domain/detector.js";
 import { validateReplayEvents } from "../domain/events.js";
+import { assertReplayFileSize } from "../domain/replay-file.js";
 import { sanitizeReplayEvents } from "../domain/sanitize.js";
 
 const inputPath = resolve(process.argv[2] ?? "demo/session-replay.json");
 
 try {
+  const metadata = await stat(inputPath);
+  assertReplayFileSize(metadata.size);
   const raw = await readFile(inputPath, "utf8");
   const events = sanitizeReplayEvents(validateReplayEvents(JSON.parse(raw)));
   const issues = detectIssues(events);

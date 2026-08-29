@@ -53,7 +53,9 @@ function sanitizeUnknown(value: unknown, key?: string): unknown {
   if (typeof value === "string") {
     if (key && SESSION_KEY.test(key)) return sanitizeSessionId(value);
     if (key && SENSITIVE_KEY.test(key)) return REDACTED_SECRET;
-    if (key && /url$/i.test(key)) return sanitizeText(sanitizeUrl(value));
+    if (key && (/url$/i.test(key) || key === "to")) {
+      return sanitizeText(sanitizeUrl(value));
+    }
     return sanitizeText(value);
   }
   if (Array.isArray(value)) return value.map((item) => sanitizeUnknown(item));

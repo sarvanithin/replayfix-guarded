@@ -169,6 +169,56 @@ describe("TrueForge event state", () => {
     expect(state.pendingApprovals[0]?.eventId).toBe("approval_1");
   });
 
+  it("clears obsolete approvals when a later terminal event has none", () => {
+    const approval: TrueForgeApi.ToolApprovalRequiredEvent = {
+      id: "approval_1",
+      threadId: "main",
+      createdAt,
+      type: "tool.approval_required",
+      toolCalls: [{ id: "call_1", sourceEventId: "message_1" }],
+    };
+    const pending = reduceTrueForgeEvent(createEventState(), approval);
+    const done = reduceTrueForgeEvent(pending, {
+      id: "turn_done",
+      threadId: null,
+      createdAt,
+      type: "turn.done",
+      state: {
+        status: "done",
+        completedAt: createdAt,
+        output: null,
+        requiredActions: [],
+      },
+    });
+
+    expect(done.status).toBe("done");
+    expect(done.pendingApprovals).toEqual([]);
+  });
+
+  it("clears obsolete approvals when a terminal event reports an error", () => {
+    const pending = reduceTrueForgeEvent(createEventState(), {
+      id: "approval_1",
+      threadId: "main",
+      createdAt,
+      type: "tool.approval_required",
+      toolCalls: [{ id: "call_1", sourceEventId: "message_1" }],
+    });
+    const failed = reduceTrueForgeEvent(pending, {
+      id: "turn_done",
+      threadId: null,
+      createdAt,
+      type: "turn.done",
+      state: {
+        status: "error",
+        completedAt: createdAt,
+        message: "failed",
+      },
+    });
+
+    expect(failed.status).toBe("error");
+    expect(failed.pendingApprovals).toEqual([]);
+  });
+
   it("collects an async SDK stream and emits state snapshots", async () => {
     const onState = vi.fn();
     const events: TrueForgeApi.TurnStreamingEvent[] = [

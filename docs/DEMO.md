@@ -37,13 +37,13 @@ Say explicitly: no GitHub write is possible until these checks pass.
 
 ### 1:20–2:35 — Three independent gates
 
-At each gate, pause on the approval card long enough for the repository, action, ref, and evidence digest to be legible.
+At each gate, keep the TrueForge pending call and guarded CLI summary visible long enough for the repository, action, ref, file hashes, test evidence, and approval digest to be legible.
 
 1. Approve creation of `replayfix/<run-id>` at the pinned base SHA. Show the branch appearing.
 2. Approve the displayed commit and push. Show the exact diff on the branch.
 3. Approve creation of the displayed **draft** pull request. Show the draft badge, linked issue, test summary, synthetic-data statement, and AI disclosure.
 
-Explain that every pending tool call has its own approval; changed arguments produce a new call and require another decision.
+Explain that every pending tool call has its own approval; the operator types the exact digest, and changed arguments produce a different digest requiring another decision.
 
 ### 2:35–2:50 — Safety proof
 

@@ -37,9 +37,9 @@ Specialized agents may triage replay events, locate relevant source, propose a m
 
 Each run receives a disposable environment pinned to the recorded base SHA. Dependency installation must respect the existing lockfile. Reproduction, local patching, regression tests, broader tests, linting, and type checking occur here. Network and secret access should be disabled unless a documented fixture requires a narrowly scoped exception.
 
-### Policy engine
+### Policy engine and approval resume
 
-The policy engine rejects sensitive paths, dependency changes, overly broad diffs, failed checks, stale base commits, non-synthetic evidence, and approval/payload mismatches. Its decision and version become part of the audit record.
+The interactive CLI parses each pending GitHub mutation before resuming TrueForge. It rejects a repository mismatch, unsafe branch, protected path, non-text or oversized file set, failed evidence, non-draft PR, and stale approval digest. The operator types the exact digest covering the real tool arguments, base SHA, and ordered test evidence; only then does the CLI create a TrueForge `user.tool_approval` allow input. Default mode never creates approval inputs.
 
 ### GitHub adapter
 
@@ -47,7 +47,7 @@ Use least-privilege GitHub/MCP operations. Separate read methods from three allo
 
 ### Approval UI
 
-Each gate displays the pending GitHub tool call and its exact arguments so a person can allow or deny that call. A changed action requires a new tool call and therefore another TrueForge approval. The included approval-digest library can additionally detect stale evidence bundles in a custom UI; the demo relies on TrueForge's native per-call gate.
+Each gate displays a redacted summary of the pending GitHub call, its file hashes, evidence, and approval digest. A changed action produces a different digest and requires a new decision. TrueForge still supplies the native per-call pause; the CLI adds the executable repository, branch, patch, test, and payload policy before resume.
 
 ## Run state machine
 

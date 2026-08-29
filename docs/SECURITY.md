@@ -58,7 +58,7 @@ Use three distinct approvals:
 2. Commit and push the displayed patch to that branch.
 3. Open the displayed pull request as a draft.
 
-TrueForge requests approval for a specific pending tool call and its arguments. Never infer approval from chat text, an earlier gate, inactivity, or a successful test. A custom UI can use the included digest helper to bind repository, base SHA, diff, ordered test evidence, branch, and title, rejecting an approval when those inputs change.
+TrueForge requests approval for a specific pending tool call and its arguments. Never infer approval from chat text, an earlier gate, inactivity, or a successful test. Interactive CLI mode validates the actual arguments, binds repository, base SHA, exact normalized payload, ordered test evidence, branch, and title, and requires the operator to type that digest before it submits an allow input. Default mode submits no approval input.
 
 Grant the GitHub integration only the repository permissions needed for contents and draft pull requests. Never write to the default branch, force-push, merge, enable auto-merge, change settings, create releases, or alter Actions workflows.
 
