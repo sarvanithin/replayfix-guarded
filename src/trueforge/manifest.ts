@@ -28,7 +28,7 @@ export const GITHUB_TOOLS_REQUIRING_APPROVAL = [
 ] as const;
 
 export interface ReplayFixManifestOptions {
-  /** TrueForge model FQN, for example `openai/gpt-5.2`. */
+  /** TrueForge model FQN, for example `openai/gpt-5-6-sol`. */
   model: string;
   /** Configured MCP connector name. Defaults to `github`. */
   githubServerName?: string;
