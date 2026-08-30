@@ -10,4 +10,8 @@ describe("shouldSubmitCheckout", () => {
   it("submits a non-empty cart", () => {
     expect(shouldSubmitCheckout({ itemCount: 2, pending: false })).toBe(true);
   });
+
+  it("does not submit while checkout is pending", () => {
+    expect(shouldSubmitCheckout({ itemCount: 2, pending: true })).toBe(false);
+  });
 });
